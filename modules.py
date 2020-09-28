@@ -26,8 +26,10 @@ class VarianceAdaptor(nn.Module):
         self.pitch_predictor = VariancePredictor()
         self.energy_predictor = VariancePredictor()
         
-        self.pitch_bins = nn.Parameter(torch.exp(torch.linspace(np.log(hp.f0_min), np.log(hp.f0_max), hp.n_bins-1)))
-        self.energy_bins = nn.Parameter(torch.linspace(hp.energy_min, hp.energy_max, hp.n_bins-1))
+        #self.pitch_bins = nn.Parameter(torch.exp(torch.linspace(np.log(hp.f0_min), np.log(hp.f0_max), hp.n_bins-1)))
+        #self.energy_bins = nn.Parameter(torch.linspace(hp.energy_min, hp.energy_max, hp.n_bins-1))
+        self.pitch_bins = torch.exp(torch.linspace(np.log(hp.f0_min), np.log(hp.f0_max), hp.n_bins-1)).cuda()
+        self.energy_bins = torch.linspace(hp.energy_min, hp.energy_max, hp.n_bins-1).cuda()
         self.pitch_embedding = nn.Embedding(hp.n_bins, hp.encoder_hidden)
         self.energy_embedding = nn.Embedding(hp.n_bins, hp.encoder_hidden)
     
@@ -45,13 +47,13 @@ class VarianceAdaptor(nn.Module):
         if pitch_target is not None:
             pitch_embedding = self.pitch_embedding(torch.bucketize(pitch_target, self.pitch_bins))
         else:
-            pitch_embedding = self.pitch_embedding(torch.bucketize(pitch_prediction, self.pitch_bins))
+            pitch_embedding = self.pitch_embedding(torch.bucketize(torch.tensor(pitch_prediction.data), self.pitch_bins))
         
         energy_prediction = self.energy_predictor(x, mel_mask)
         if energy_target is not None:
             energy_embedding = self.energy_embedding(torch.bucketize(energy_target, self.energy_bins))
         else:
-            energy_embedding = self.energy_embedding(torch.bucketize(energy_prediction, self.energy_bins))
+            energy_embedding = self.energy_embedding(torch.bucketize(torch.tensor(energy_prediction.data), self.energy_bins))
         
         x = x + pitch_embedding + energy_embedding
         
